@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Long Straddle Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0d11;
+    --panel: #12161c;
+    --panel-2: #171c23;
+    --border: #232a33;
+    --text: #e7ecf2;
+    --muted: #7c8894;
+    --muted-2: #4d5761;
+    --teal: #2dd4a7;
+    --teal-dim: #1a3b34;
+    --red: #ff5d5d;
+    --red-dim: #3a2020;
+    --amber: #f2b84b;
+    --amber-dim: #3a3220;
+    --mono: 'JetBrains Mono', monospace;
+    --disp: 'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--disp);}
+  body{padding:0 0 64px;}
+  a{color:var(--teal);}
+
+  .topbar{
+    border-bottom:1px solid var(--border);
+    padding:20px 28px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    position:sticky; top:0; background:rgba(10,13,17,0.92); backdrop-filter:blur(8px); z-index:20;
+  }
+  .brand{display:flex; align-items:baseline; gap:12px;}
+  .brand .mark{
+    width:10px;height:10px;border-radius:2px;background:var(--teal);
+    box-shadow:0 0 12px var(--teal); display:inline-block;
+  }
+  .brand h1{font-size:16px; margin:0; font-weight:600; letter-spacing:0.02em;}
+  .brand .sub{color:var(--muted); font-size:12px; font-family:var(--mono);}
+
+  .ticker{
+    display:flex; gap:22px; font-family:var(--mono); font-size:12px; color:var(--muted); flex-wrap:wrap;
+  }
+  .ticker b{color:var(--text); font-weight:600;}
+  .ticker .up{color:var(--teal);}
+  .ticker .down{color:var(--red);}
+
+  .wrap{max-width:1240px; margin:0 auto; padding:28px;}
+
+  .grid{display:grid; grid-template-columns: 380px 1fr; gap:24px;}
+  @media (max-width: 900px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:22px;
+  }
+  .panel + .panel{margin-top:24px;}
+  .panel h2{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted);
+    margin:0 0 18px; font-weight:600;
+  }
+
+  .field{margin-bottom:16px;}
+  .field label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:12.5px; color:var(--muted); margin-bottom:6px;
+  }
+  .field label .note{font-size:10.5px; color:var(--muted-2); font-family:var(--mono);}
+  .field input, .field select{
+    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:10px 12px; border-radius:6px; font-family:var(--mono); font-size:14px;
+    outline:none; transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus{border-color:var(--teal);}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  /* Results */
+  .stat-row{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px;
+  }
+  @media (max-width: 900px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:16px;
+  }
+  .stat .k{font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:8px;}
+  .stat .v{font-family:var(--mono); font-size:22px; font-weight:600;}
+  .stat .v.pos{color:var(--teal);}
+  .stat .v.neg{color:var(--red);}
+  .stat .v.neu{color:var(--amber);}
+
+  /* Range gauge — signature element */
+  .gauge-wrap{margin-bottom:26px;}
+  .gauge-label{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:8px;}
+  .gauge{
+    position:relative; height:34px; border-radius:8px; overflow:hidden; border:1px solid var(--border);
+    background: linear-gradient(90deg,
+      var(--teal-dim) 0%, var(--teal-dim) 33%,
+      var(--red-dim) 33%, var(--red-dim) 67%,
+      var(--teal-dim) 67%, var(--teal-dim) 100%);
+  }
+  .gauge .zone-label{
+    position:absolute; top:50%; transform:translateY(-50%); font-family:var(--mono); font-size:10px;
+    color:var(--muted); letter-spacing:0.04em; pointer-events:none;
+  }
+  .gauge .marker{
+    position:absolute; top:-4px; bottom:-4px; width:3px; background:#fff; box-shadow:0 0 8px rgba(255,255,255,0.8);
+  }
+  .gauge .marker .tag{
+    position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+    font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text); white-space:nowrap;
+  }
+  .be-line{
+    position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.35);
+  }
+
+  .result-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:16px 20px; border-radius:8px; margin-bottom:24px; border:1px solid var(--border);
+    font-family:var(--mono);
+  }
+  .result-banner.profit{background:var(--teal-dim); border-color:#2b5c50;}
+  .result-banner.loss{background:var(--red-dim); border-color:#5c2b2b;}
+  .result-banner.breakeven{background:var(--amber-dim); border-color:#5c4e2b;}
+  .result-banner .tag{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.12em; padding:4px 10px; border-radius:20px;
+    font-weight:700;
+  }
+  .result-banner.profit .tag{background:var(--teal); color:#062019;}
+  .result-banner.loss .tag{background:var(--red); color:#2a0808;}
+  .result-banner.breakeven .tag{background:var(--amber); color:#2a2008;}
+
+  .kv-list{display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; font-size:13px;}
+  .kv-list div{display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding-bottom:8px;}
+  .kv-list .k{color:var(--muted);}
+  .kv-list .v{font-family:var(--mono); text-align:right;}
+
+  /* chart */
+  #chartCanvas{width:100%; height:280px;}
+
+  /* table */
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12.5px;}
+  thead th{
+    text-align:right; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);
+    padding:8px 10px; border-bottom:1px solid var(--border); position:sticky; top:69px; background:var(--panel);
+  }
+  thead th:first-child, tbody td:first-child{text-align:left;}
+  tbody td{padding:7px 10px; text-align:right; border-bottom:1px solid #191e25;}
+  tbody tr:hover{background:var(--panel-2);}
+  tbody tr.itm-row{background:rgba(45,212,167,0.045);}
+  tbody tr.otm-row{background:rgba(255,93,93,0.03);}
+  .pos-cell{color:var(--teal);}
+  .neg-cell{color:var(--red);}
+  .table-scroll{max-height:420px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;}
+
+  footer{
+    max-width:1240px; margin:40px auto 0; padding:0 28px; color:var(--muted-2); font-size:11px; font-family:var(--mono);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+  .assumptions{font-size:12px; color:var(--muted); line-height:1.7;}
+  .assumptions li{margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="mark"></span>
+    <h1>Long Straddle Calculator</h1>
+    <span class="sub">BUY CALL + BUY PUT · SAME STRIKE & EXPIRATION</span>
+  </div>
+  <div class="ticker">
+    <span>SYM <b id="tSym">XYZ</b></span>
+    <span>BREAKEVENS <b id="tBE">$45.00 — $55.00</b></span>
+    <span>MAX LOSS <b class="down" id="tMaxLoss">$500.00</b></span>
+    <span>DTE <b id="tDte">60</b></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- LEFT: INPUTS -->
+    <div>
+      <div class="panel">
+        <h2>Editable Trade Inputs</h2>
+
+        <div class="field">
+          <label>Underlying Symbol</label>
+          <input id="symbol" type="text" value="XYZ" maxlength="10">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Stock Price at Entry ($)</label>
+            <input id="stockEntry" type="number" step="0.01" value="50.00">
+          </div>
+          <div class="field">
+            <label>Strike Price ($)</label>
+            <input id="strike" type="number" step="0.01" value="50.00">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Call Premium ($/sh)</label>
+            <input id="callPremium" type="number" step="0.01" value="3.00">
+          </div>
+          <div class="field">
+            <label>Put Premium ($/sh)</label>
+            <input id="putPremium" type="number" step="0.01" value="2.00">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label># Straddles</label>
+            <input id="numStraddles" type="number" step="1" min="1" value="1">
+          </div>
+          <div class="field">
+            <label>Shares / Contract</label>
+            <input id="multiplier" type="number" step="1" min="1" value="100">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Expiration Date</label>
+          <input id="expDate" type="date" value="2026-09-18">
+        </div>
+
+        <div class="field">
+          <label>Stock Price at Expiration ($) <span class="note">test scenario</span></label>
+          <input id="stockExp" type="number" step="0.01" value="60.00">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Fees & Commissions ($)</label>
+            <input id="fees" type="number" step="0.01" value="0">
+          </div>
+          <div class="field">
+            <label>IV Outlook</label>
+            <select id="ivOutlook">
+              <option>Expected to Rise</option>
+              <option>Expected to Fall</option>
+              <option>Expected to Stay Flat</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Scenario Low (%)</label>
+            <input id="scLow" type="number" step="1" value="50">
+          </div>
+          <div class="field">
+            <label>Scenario High (%)</label>
+            <input id="scHigh" type="number" step="1" value="150">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Scenario Intervals</label>
+          <input id="scInt" type="number" step="1" min="2" max="60" value="20">
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div>
+      <div class="panel">
+        <h2>Automatic Strategy Results</h2>
+
+        <div id="resultBanner" class="result-banner profit">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">EXPIRATION RESULT</div>
+            <div style="font-size:20px;font-weight:700;" id="netPlBig">+$500.00</div>
+          </div>
+          <span class="tag" id="resultTag">PROFIT</span>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="k">Combined Premium</div><div class="v" id="oCombPrem">$5.00</div></div>
+          <div class="stat"><div class="k">Total Debit / Cost</div><div class="v" id="oDebit">$500.00</div></div>
+          <div class="stat"><div class="k">Lower Breakeven</div><div class="v" id="oLowBE">$45.00</div></div>
+          <div class="stat"><div class="k">Upper Breakeven</div><div class="v" id="oUpBE">$55.00</div></div>
+        </div>
+
+        <div class="gauge-wrap">
+          <div class="gauge-label"><span>Loss zone</span><span>Profit position at expiration</span><span>Loss zone</span></div>
+          <div class="gauge" id="gauge">
+            <div class="marker" id="gaugeMarker"><span class="tag" id="gaugeTag">$60.00</span></div>
+          </div>
+        </div>
+
+        <div class="kv-list">
+          <div><span class="k">Call Intrinsic Value</span><span class="v" id="oCallInt">$10.00</span></div>
+          <div><span class="k">Put Intrinsic Value</span><span class="v" id="oPutInt">-</span></div>
+          <div><span class="k">Combined Value at Expiration</span><span class="v" id="oCombVal">$10.00</span></div>
+          <div><span class="k">Gross Profit / Loss</span><span class="v" id="oGross">$500.00</span></div>
+          <div><span class="k">Net Profit / Loss</span><span class="v" id="oNet">$500.00</span></div>
+          <div><span class="k">Return on Debit</span><span class="v" id="oReturn">100.0%</span></div>
+          <div><span class="k">Maximum Loss</span><span class="v" id="oMaxLoss">$500.00</span></div>
+          <div><span class="k">Time Decay Effect</span><span class="v" id="oDecay">Negative</span></div>
+          <div style="grid-column:1/-1;"><span class="k">Maximum Profit</span><span class="v" id="oMaxProfit" style="text-align:right;">Unlimited above $55.00; downside gains increase below $45.00</span></div>
+          <div style="grid-column:1/-1;"><span class="k">Best Market Outlook</span><span class="v" id="oBestOutlook" style="text-align:right;">Large move above $55.00 or below $45.00</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Payoff Diagram</h2>
+        <canvas id="chartCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:24px;">
+    <h2>Expiration Payoff Table</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Stock at Expiration</th>
+            <th>Call Intrinsic</th>
+            <th>Put Intrinsic</th>
+            <th>Combined Value</th>
+            <th>Net P/L ($/sh)</th>
+            <th>Total Net P/L</th>
+            <th>Return on Debit</th>
+          </tr>
+        </thead>
+        <tbody id="payoffBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:24px;">
+    <h2>Assumptions &amp; Notes</h2>
+    <ul class="assumptions">
+      <li>All figures are illustrative — replace the inputs with your own trade data.</li>
+      <li>Values at expiration use intrinsic value only (no Black-Scholes / time-value pricing before expiration).</li>
+      <li>"# Straddles" scales both legs equally (1 call + 1 put per straddle).</li>
+      <li>Fees are applied once to the overall position, not per contract.</li>
+      <li>Everything on this page recalculates live as you edit the inputs — nothing is hardcoded.</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  <span>Long Straddle Calculator — client-side, no data leaves your browser.</span>
+  <span>Not financial advice.</span>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmtCur = (n, dp=2) => {
+  if (n === null || n === undefined || isNaN(n)) return '-';
+  const abs = Math.abs(n);
+  const s = abs.toLocaleString('en-US', {minimumFractionDigits:dp, maximumFractionDigits:dp});
+  if (Math.abs(n) < 0.005) return '-';
+  return (n < 0 ? '($' : '$') + s + (n < 0 ? ')' : '');
+};
+const fmtPct = (n) => {
+  if (n === null || n === undefined || isNaN(n)) return '-';
+  if (Math.abs(n) < 0.0005) return '-';
+  const s = (Math.abs(n)*100).toFixed(1) + '%';
+  return n < 0 ? '(' + s + ')' : s;
+};
+
+function readInputs(){
+  return {
+    symbol: $('symbol').value.trim().toUpperCase() || 'XYZ',
+    s0: parseFloat($('stockEntry').value) || 0,
+    k: parseFloat($('strike').value) || 0,
+    callP: parseFloat($('callPremium').value) || 0,
+    putP: parseFloat($('putPremium').value) || 0,
+    n: parseInt($('numStraddles').value) || 1,
+    mult: parseInt($('multiplier').value) || 100,
+    expDate: $('expDate').value,
+    sExp: parseFloat($('stockExp').value) || 0,
+    fees: parseFloat($('fees').value) || 0,
+    iv: $('ivOutlook').value,
+    scLow: (parseFloat($('scLow').value) || 0) / 100,
+    scHigh: (parseFloat($('scHigh').value) || 0) / 100,
+    scInt: Math.max(2, Math.min(60, parseInt($('scInt').value) || 20)),
+  };
+}
+
+function daysToExpiration(expDateStr){
+  const exp = new Date(expDateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const diff = Math.round((exp - today) / 86400000);
+  return diff;
+}
+
+function compute(){
+  const inp = readInputs();
+  const combPrem = inp.callP + inp.putP;
+  const debit = (combPrem * inp.mult * inp.n) + inp.fees;
+  const lowBE = inp.k - combPrem;
+  const upBE = inp.k + combPrem;
+  const callInt = Math.max(inp.sExp - inp.k, 0);
+  const putInt = Math.max(inp.k - inp.sExp, 0);
+  const combVal = callInt + putInt;
+  const gross = (combVal - combPrem) * inp.mult * inp.n;
+  const net = gross - inp.fees;
+  const ret = debit === 0 ? null : net / debit;
+  const result = net > 0.005 ? 'PROFIT' : (net < -0.005 ? 'LOSS' : 'BREAKEVEN');
+  const dte = daysToExpiration(inp.expDate);
+
+  return {inp, combPrem, debit, lowBE, upBE, callInt, putInt, combVal, gross, net, ret, result, dte};
+}
+
+function buildPayoffRows(inp, combPrem, debit, mult, n, fees){
+  const rows = [];
+  const lo = inp.k * inp.scLow;
+  const hi = inp.k * inp.scHigh;
+  for (let i = 0; i <= inp.scInt; i++){
+    const price = lo + i * (hi - lo) / inp.scInt;
+    const callI = Math.max(price - inp.k, 0);
+    const putI = Math.max(inp.k - price, 0);
+    const combV = callI + putI;
+    const netPS = combV - combPrem;
+    const totalNet = (netPS * mult * n) - fees;
+    const retD = debit === 0 ? null : totalNet / debit;
+    rows.push({price, callI, putI, combV, netPS, totalNet, retD});
+  }
+  return rows;
+}
+
+let chartInstance = null;
+
+function render(){
+  const r = compute();
+  const {inp} = r;
+
+  $('tSym').textContent = inp.symbol;
+  $('tBE').textContent = `${fmtCur(r.lowBE)} — ${fmtCur(r.upBE)}`;
+  $('tMaxLoss').textContent = fmtCur(r.debit);
+  $('tDte').textContent = isNaN(r.dte) ? '-' : r.dte;
+
+  $('oCombPrem').textContent = fmtCur(r.combPrem);
+  $('oDebit').textContent = fmtCur(r.debit, 0);
+  $('oLowBE').textContent = fmtCur(r.lowBE);
+  $('oUpBE').textContent = fmtCur(r.upBE);
+  $('oCallInt').textContent = fmtCur(r.callInt);
+  $('oPutInt').textContent = fmtCur(r.putInt);
+  $('oCombVal').textContent = fmtCur(r.combVal);
+  $('oGross').textContent = fmtCur(r.gross, 0);
+  $('oNet').textContent = fmtCur(r.net, 0);
+  $('oReturn').textContent = fmtPct(r.ret);
+  $('oMaxLoss').textContent = fmtCur(r.debit, 0);
+  $('oMaxProfit').textContent = `Unlimited above ${fmtCur(r.upBE)}; downside gains increase below ${fmtCur(r.lowBE)}`;
+  $('oBestOutlook').textContent = `Large move above ${fmtCur(r.upBE)} or below ${fmtCur(r.lowBE)}`;
+  $('oDecay').textContent = 'Negative — both legs lose time value';
+
+  const banner = $('resultBanner');
+  banner.className = 'result-banner ' + r.result.toLowerCase();
+  $('resultTag').textContent = r.result;
+  $('netPlBig').textContent = (r.net >= 0 ? '+' : '') + fmtCur(r.net, 0).replace('($','-$').replace(')','');
+
+  // gauge
+  const lo = Math.min(r.lowBE, inp.sExp, inp.k) - Math.max(1, r.combPrem);
+  const hi = Math.max(r.upBE, inp.sExp, inp.k) + Math.max(1, r.combPrem);
+  const span = (hi - lo) || 1;
+  const pct = Math.max(0, Math.min(100, ((inp.sExp - lo) / span) * 100));
+  const gauge = $('gauge');
+  gauge.style.background = `linear-gradient(90deg,
+     var(--red-dim) 0%, var(--red-dim) ${((r.lowBE-lo)/span*100)}%,
+     var(--teal-dim) ${((r.lowBE-lo)/span*100)}%, var(--teal-dim) ${((r.upBE-lo)/span*100)}%,
+     var(--red-dim) ${((r.upBE-lo)/span*100)}%, var(--red-dim) 100%)`;
+  const marker = $('gaugeMarker');
+  marker.style.left = `calc(${pct}% - 1.5px)`;
+  $('gaugeTag').textContent = fmtCur(inp.sExp);
+
+  // table
+  const rows = buildPayoffRows(inp, r.combPrem, r.debit, inp.mult, inp.n, inp.fees);
+  const tbody = $('payoffBody');
+  tbody.innerHTML = rows.map(row => {
+    const cls = row.price >= r.upBE || row.price <= r.lowBE ? 'itm-row' : 'otm-row';
+    const netCls = row.totalNet > 0.005 ? 'pos-cell' : (row.totalNet < -0.005 ? 'neg-cell' : '');
+    return `<tr class="${cls}">
+      <td>${fmtCur(row.price)}</td>
+      <td>${fmtCur(row.callI)}</td>
+      <td>${fmtCur(row.putI)}</td>
+      <td>${fmtCur(row.combV)}</td>
+      <td class="${netCls}">${fmtCur(row.netPS)}</td>
+      <td class="${netCls}">${fmtCur(row.totalNet, 0)}</td>
+      <td class="${netCls}">${fmtPct(row.retD)}</td>
+    </tr>`;
+  }).join('');
+
+  drawChart(rows, r);
+}
+
+function drawChart(rows, r){
+  const canvas = $('chartCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 600;
+  const cssH = 280;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  const pad = {l:60, r:20, t:16, b:30};
+  const w = cssW - pad.l - pad.r;
+  const h = cssH - pad.t - pad.b;
+
+  const xs = rows.map(row => row.price);
+  const ys = rows.map(row => row.totalNet);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(0, ...ys), yMax = Math.max(0, ...ys);
+  const xScale = v => pad.l + ( (v - xMin) / (xMax - xMin || 1) ) * w;
+  const yScale = v => pad.t + h - ( (v - yMin) / (yMax - yMin || 1) ) * h;
+
+  // grid
+  ctx.strokeStyle = '#232a33';
+  ctx.lineWidth = 1;
+  ctx.font = '10px JetBrains Mono, monospace';
+  ctx.fillStyle = '#7c8894';
+  for (let i=0;i<=4;i++){
+    const yv = yMin + (yMax-yMin)*i/4;
+    const yy = yScale(yv);
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(pad.l+w, yy); ctx.stroke();
+    ctx.fillText('$'+Math.round(yv).toLocaleString(), 4, yy+3);
+  }
+
+  // zero line
+  const zeroY = yScale(0);
+  ctx.strokeStyle = '#4d5761';
+  ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(pad.l+w, zeroY); ctx.stroke();
+
+  // breakeven markers
+  ctx.strokeStyle = 'rgba(242,184,75,0.6)';
+  ctx.setLineDash([4,3]);
+  [r.lowBE, r.upBE].forEach(be => {
+    if (be >= xMin && be <= xMax){
+      const bx = xScale(be);
+      ctx.beginPath(); ctx.moveTo(bx, pad.t); ctx.lineTo(bx, pad.t+h); ctx.stroke();
+    }
+  });
+  ctx.setLineDash([]);
+
+  // fill under/over curve split by profit/loss
+  ctx.beginPath();
+  rows.forEach((row,i) => {
+    const x = xScale(row.price), y = yScale(row.totalNet);
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#2dd4a7';
+  ctx.stroke();
+
+  // current expiration price marker
+  if (r.inp.sExp >= xMin && r.inp.sExp <= xMax){
+    const mx = xScale(r.inp.sExp), my = yScale(r.net);
+    ctx.beginPath();
+    ctx.arc(mx, my, 4.5, 0, Math.PI*2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+
+  // x-axis labels
+  ctx.fillStyle = '#7c8894';
+  ctx.textAlign = 'center';
+  [xMin, (xMin+xMax)/2, xMax].forEach(v => {
+    ctx.fillText('$'+v.toFixed(0), xScale(v), pad.t+h+18);
+  });
+  ctx.textAlign = 'left';
+}
+
+// wire up expiration date default (60 days out) and events
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', render));
+window.addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>
