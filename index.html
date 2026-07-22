@@ -93,7 +93,7 @@
   .stat .v.neu{color:var(--amber);}
 
   /* Range gauge — signature element */
-  .gauge-wrap{margin-bottom:26px;}
+  .gauge-{margin-bottom:26px;}
   .gauge-label{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:8px;}
   .gauge{
     position:relative; height:34px; border-radius:8px; overflow:hidden; border:1px solid var(--border);
@@ -111,7 +111,7 @@
   }
   .gauge .marker .tag{
     position:absolute; top:-22px; left:50%; transform:translateX(-50%);
-    font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text); white-space:nowrap;
+    font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text); white-space:no;
   }
   .be-line{
     position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.35);
@@ -158,7 +158,7 @@
 
   footer{
     max-width:1240px; margin:40px auto 0; padding:0 28px; color:var(--muted-2); font-size:11px; font-family:var(--mono);
-    display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+    display:flex; justify-content:space-between; flex-:; gap:8px;
   }
   .assumptions{font-size:12px; color:var(--muted); line-height:1.7;}
   .assumptions li{margin-bottom:4px;}
@@ -179,7 +179,210 @@
     <span>DTE <b id="tDte">60</b></span>
   </div>
 </div>
+<style>
+  .mkt-wrap{max-width:1240px; margin:24px auto 0; padding:0 28px;}
+  .mkt-panel{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:22px;}
+  .mkt-row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:18px;}
+  .mkt-field{display:flex; flex-direction:column; gap:6px;}
+  .mkt-field label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;}
+  .mkt-field input{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:9px 11px; border-radius:6px; font-family:var(--mono); font-size:13px; outline:none; width:160px;
+  }
+  .mkt-field input:focus{border-color:var(--teal);}
+  .mkt-btn{
+    background:var(--teal); color:#062019; border:none; border-radius:6px; padding:10px 16px;
+    font-family:var(--disp); font-weight:600; font-size:13px; cursor:pointer; transition:opacity .15s;
+  }
+  .mkt-btn:hover{opacity:0.85;}
+  .mkt-btn.secondary{background:var(--panel-2); color:var(--text); border:1px solid var(--border);}
+  .mkt-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .mkt-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;}
+  @media (max-width:800px){ .mkt-stats{grid-template-columns:repeat(2,1fr);} }
+  .mkt-stat{background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:14px;}
+  .mkt-stat .k{font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:6px;}
+  .mkt-stat .v{font-family:var(--mono); font-size:18px; font-weight:600;}
+  .mkt-stat .v.up{color:var(--teal);}
+  .mkt-stat .v.down{color:var(--red);}
+  .mkt-ranges{display:flex; gap:8px; margin-bottom:14px;}
+  .mkt-range-btn{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--muted);
+    padding:6px 14px; border-radius:20px; font-family:var(--mono); font-size:12px; cursor:pointer;
+  }
+  .mkt-range-btn.active{background:var(--teal); color:#062019; border-color:var(--teal); font-weight:600;}
+  .mkt-msg{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-bottom:14px;}
+  .mkt-msg.err{color:var(--red);}
+  #mktChartCanvas{width:100%; height:260px;}
+  .mkt-settings{font-family:var(--mono); font-size:11px; color:var(--muted-2); margin-top:10px;}
+  .mkt-settings a{color:var(--teal); cursor:pointer; text-decoration:underline;}
+</style>
 
+<div class="mkt-wrap">
+  <div class="mkt-panel">
+    <h2 style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted); margin:0 0 18px; font-weight:600;">Live Market Data — Yahoo Finance</h2>
+
+    <div id="mktSetupRow" class="mkt-row" style="display:none;">
+      <div class="mkt-field" style="width:100%;">
+        <label>Cloudflare Worker URL (one-time setup)</label>
+        <input id="mktWorkerUrl" type="text" placeholder="https://your-worker.yourname.workers.dev" style="width:100%;">
+      </div>
+      <button class="mkt-btn" onclick="mktSaveWorkerUrl()">Save</button>
+    </div>
+
+    <div class="mkt-row">
+      <div class="mkt-field">
+        <label>Ticker Symbol</label>
+        <input id="mktSymbol" type="text" value="AAPL" maxlength="10">
+      </div>
+      <button class="mkt-btn" onclick="mktFetch()">Fetch Live Data</button>
+      <button class="mkt-btn secondary" id="mktUseBtn" onclick="mktUsePrice()" disabled>Use this price for Stock Price at Entry</button>
+    </div>
+
+    <div id="mktMsg" class="mkt-msg">Enter a ticker and click Fetch Live Data.</div>
+
+    <div class="mkt-stats">
+      <div class="mkt-stat"><div class="k">Current Price</div><div class="v" id="mktPrice">-</div></div>
+      <div class="mkt-stat"><div class="k">Previous Close</div><div class="v" id="mktPrevClose">-</div></div>
+      <div class="mkt-stat"><div class="k">Change</div><div class="v" id="mktChange">-</div></div>
+      <div class="mkt-stat"><div class="k">Exchange</div><div class="v" id="mktExchange" style="font-size:13px;">-</div></div>
+    </div>
+
+    <div class="mkt-ranges">
+      <button class="mkt-range-btn" data-range="1y" onclick="mktSetRange('1y')">1 Year</button>
+      <button class="mkt-range-btn" data-range="5y" onclick="mktSetRange('5y')">5 Year</button>
+      <button class="mkt-range-btn" data-range="10y" onclick="mktSetRange('10y')">10 Year</button>
+      <button class="mkt-range-btn" data-range="20y" onclick="mktSetRange('20y')">20 Year</button>
+    </div>
+
+    <canvas id="mktChartCanvas"></canvas>
+
+    <div class="mkt-settings">
+      Data via an unofficial Yahoo Finance endpoint — for education/paper-trading only, not guaranteed accurate or continuously available.
+      <a onclick="mktToggleSetup()">Change Worker URL</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let mktCurrentRange = '1y';
+let mktLastPrice = null;
+let mktLastHistory = [];
+
+function mktGetWorkerUrl(){ return localStorage.getItem('straddleWorkerUrl') || ''; }
+function mktSaveWorkerUrl(){
+  const v = document.getElementById('mktWorkerUrl').value.trim();
+  if (v) { localStorage.setItem('straddleWorkerUrl', v); document.getElementById('mktSetupRow').style.display = 'none'; }
+}
+function mktToggleSetup(){
+  const row = document.getElementById('mktSetupRow');
+  document.getElementById('mktWorkerUrl').value = mktGetWorkerUrl();
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+function mktSetRange(r){
+  mktCurrentRange = r;
+  document.querySelectorAll('.mkt-range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === r));
+  mktFetch();
+}
+
+async function mktFetch(){
+  const workerUrl = mktGetWorkerUrl();
+  const msg = document.getElementById('mktMsg');
+  if (!workerUrl){
+    document.getElementById('mktSetupRow').style.display = 'flex';
+    msg.textContent = 'Set your Cloudflare Worker URL above first, then click Fetch again.';
+    msg.className = 'mkt-msg err';
+    return;
+  }
+  const symbol = (document.getElementById('mktSymbol').value || '').trim().toUpperCase();
+  if (!symbol){ msg.textContent = 'Enter a ticker symbol.'; msg.className = 'mkt-msg err'; return; }
+
+  document.querySelectorAll('.mkt-range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === mktCurrentRange));
+  msg.textContent = `Fetching ${symbol}...`;
+  msg.className = 'mkt-msg';
+  document.getElementById('mktUseBtn').disabled = true;
+
+  try {
+    const resp = await fetch(`${workerUrl}?symbol=${encodeURIComponent(symbol)}&range=${mktCurrentRange}`);
+    const data = await resp.json();
+    if (data.error){ msg.textContent = 'Error: ' + data.error; msg.className = 'mkt-msg err'; return; }
+
+    mktLastPrice = data.currentPrice;
+    mktLastHistory = data.history || [];
+
+    document.getElementById('mktPrice').textContent = data.currentPrice != null ? '$' + data.currentPrice.toFixed(2) : '-';
+    document.getElementById('mktPrevClose').textContent = data.previousClose != null ? '$' + data.previousClose.toFixed(2) : '-';
+    const chg = (data.currentPrice != null && data.previousClose) ? data.currentPrice - data.previousClose : null;
+    const chgPct = (chg != null && data.previousClose) ? (chg / data.previousClose) * 100 : null;
+    const chgEl = document.getElementById('mktChange');
+    if (chg != null){
+      chgEl.textContent = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)} (${chgPct.toFixed(2)}%)`;
+      chgEl.className = 'v ' + (chg >= 0 ? 'up' : 'down');
+    } else { chgEl.textContent = '-'; chgEl.className = 'v'; }
+    document.getElementById('mktExchange').textContent = data.exchangeName || '-';
+
+    msg.textContent = `Loaded ${data.symbol} — ${mktLastHistory.length} data points (${mktCurrentRange}).`;
+    msg.className = 'mkt-msg';
+    document.getElementById('mktUseBtn').disabled = (mktLastPrice == null);
+
+    mktDrawChart(mktLastHistory);
+  } catch (e){
+    msg.textContent = 'Fetch failed: ' + e.message;
+    msg.className = 'mkt-msg err';
+  }
+}
+
+function mktUsePrice(){
+  if (mktLastPrice == null) return;
+  const entryField = document.getElementById('stockEntry');
+  entryField.value = mktLastPrice.toFixed(2);
+  entryField.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function mktDrawChart(history){
+  const canvas = document.getElementById('mktChartCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 600;
+  const cssH = 260;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+  if (!history.length) return;
+
+  const pad = {l:60, r:20, t:16, b:30};
+  const w = cssW - pad.l - pad.r;
+  const h = cssH - pad.t - pad.b;
+  const closes = history.map(p => p.close);
+  const yMin = Math.min(...closes), yMax = Math.max(...closes);
+  const xScale = i => pad.l + (i/(history.length-1||1)) * w;
+  const yScale = v => pad.t + h - ((v - yMin)/((yMax - yMin)||1)) * h;
+
+  ctx.strokeStyle = '#232a33'; ctx.lineWidth = 1;
+  ctx.font = '10px JetBrains Mono, monospace'; ctx.fillStyle = '#7c8894';
+  for (let i=0;i<=4;i++){
+    const yv = yMin + (yMax-yMin)*i/4;
+    const yy = yScale(yv);
+    ctx.beginPath(); ctx.moveTo(pad.l,yy); ctx.lineTo(pad.l+w,yy); ctx.stroke();
+    ctx.fillText('$'+yv.toFixed(0), 4, yy+3);
+  }
+
+  ctx.beginPath();
+  history.forEach((p,i) => { const x=xScale(i), y=yScale(p.close); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineWidth = 2; ctx.strokeStyle = '#2dd4a7'; ctx.stroke();
+
+  ctx.fillStyle = '#7c8894'; ctx.textAlign = 'center';
+  [0, Math.floor(history.length/2), history.length-1].forEach(i => {
+    const d = new Date(history[i].date);
+    ctx.fillText(d.getFullYear(), xScale(i), pad.t+h+18);
+  });
+  ctx.textAlign = 'left';
+}
+
+if (!mktGetWorkerUrl()) document.getElementById('mktSetupRow').style.display = 'flex';
+document.querySelector('.mkt-range-btn[data-range="1y"]').classList.add('active');
+</script>
 <div class="wrap">
   <div class="grid">
 
