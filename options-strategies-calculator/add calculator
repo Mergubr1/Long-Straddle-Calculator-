@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All-in-One Option Strategies Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0d11;
+    --panel: #12161c;
+    --panel-2: #171c23;
+    --border: #232a33;
+    --text: #e7ecf2;
+    --muted: #7c8894;
+    --muted-2: #4d5761;
+    --teal: #2dd4a7;
+    --teal-dim: #1a3b34;
+    --red: #ff5d5d;
+    --red-dim: #3a2020;
+    --amber: #f2b84b;
+    --amber-dim: #3a3220;
+    --mono: 'JetBrains Mono', monospace;
+    --disp: 'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--disp);}
+  body{padding:0 0 64px;}
+  a{color:var(--teal);}
+
+  .topbar{
+    border-bottom:1px solid var(--border);
+    padding:20px 28px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    position:sticky; top:0; background:rgba(10,13,17,0.92); backdrop-filter:blur(8px); z-index:20;
+  }
+  .brand{display:flex; align-items:baseline; gap:12px;}
+  .brand .mark{
+    width:10px;height:10px;border-radius:2px;background:var(--teal);
+    box-shadow:0 0 12px var(--teal); display:inline-block;
+  }
+  .brand h1{font-size:16px; margin:0; font-weight:600; letter-spacing:0.02em;}
+  .brand .sub{color:var(--muted); font-size:12px; font-family:var(--mono);}
+
+  .ticker{display:flex; gap:22px; font-family:var(--mono); font-size:12px; color:var(--muted); flex-wrap:wrap;}
+  .ticker b{color:var(--text); font-weight:600;}
+
+  .wrap{max-width:1240px; margin:0 auto; padding:28px;}
+  .mkt-wrap{max-width:1240px; margin:0 auto; padding:0 28px 24px;}
+
+  .grid{display:grid; grid-template-columns: 400px 1fr; gap:24px;}
+  @media (max-width: 900px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:22px;}
+  .panel + .panel{margin-top:24px;}
+  .panel h2{font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted); margin:0 0 18px; font-weight:600;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+  .field input, .field select{
+    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:10px 12px; border-radius:6px; font-family:var(--mono); font-size:14px; outline:none; transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus{border-color:var(--teal);}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .strategy-select select{font-family:var(--disp); font-size:15px; font-weight:600; padding:12px;}
+
+  .leg-group{border-top:1px dashed var(--border); padding-top:14px; margin-top:14px;}
+  .leg-group .leg-title{font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--amber); margin-bottom:10px;}
+
+  .stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
+  @media (max-width: 900px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+  .stat{background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:16px;}
+  .stat .k{font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:8px;}
+  .stat .v{font-family:var(--mono); font-size:20px; font-weight:600;}
+  .stat .v.pos{color:var(--teal);}
+  .stat .v.neg{color:var(--red);}
+
+  .result-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:16px 20px; border-radius:8px; margin-bottom:20px; border:1px solid var(--border); font-family:var(--mono);
+  }
+  .result-banner.profit{background:var(--teal-dim); border-color:#2b5c50;}
+  .result-banner.loss{background:var(--red-dim); border-color:#5c2b2b;}
+  .result-banner.breakeven{background:var(--amber-dim); border-color:#5c4e2b;}
+  .result-banner .tag{font-size:11px; text-transform:uppercase; letter-spacing:0.12em; padding:4px 10px; border-radius:20px; font-weight:700;}
+  .result-banner.profit .tag{background:var(--teal); color:#062019;}
+  .result-banner.loss .tag{background:var(--red); color:#2a0808;}
+  .result-banner.breakeven .tag{background:var(--amber); color:#2a2008;}
+
+  .setup-warn{
+    background:var(--red-dim); border:1px solid #5c2b2b; color:#ffb3b3; border-radius:8px;
+    padding:12px 16px; font-family:var(--mono); font-size:12.5px; margin-bottom:20px; display:none;
+  }
+  .setup-warn.show{display:block;}
+
+  .kv-list{display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; font-size:13px;}
+  .kv-list div{display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding-bottom:8px;}
+  .kv-list .k{color:var(--muted);}
+  .kv-list .v{font-family:var(--mono); text-align:right;}
+
+  #chartCanvas{width:100%; height:280px;}
+
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px;}
+  thead th{
+    text-align:right; font-size:9.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);
+    padding:8px 8px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--panel);
+  }
+  thead th:first-child, tbody td:first-child{text-align:left;}
+  tbody td{padding:6px 8px; text-align:right; border-bottom:1px solid #191e25;}
+  tbody tr:hover{background:var(--panel-2);}
+  .pos-cell{color:var(--teal);} .neg-cell{color:var(--red);}
+  .table-scroll{max-height:420px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;}
+
+  .ref-table{width:100%; border-collapse:collapse; font-size:12px; font-family:var(--mono);}
+  .ref-table th{text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); padding:8px; border-bottom:1px solid var(--border);}
+  .ref-table td{padding:8px; border-bottom:1px solid #191e25; vertical-align:top;}
+  .ref-table tr.current{background:rgba(45,212,167,0.06);}
+  .ref-table tr.current td:first-child{color:var(--teal); font-weight:700;}
+
+  footer{max-width:1240px; margin:40px auto 0; padding:0 28px; color:var(--muted-2); font-size:11px; font-family:var(--mono); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+  .assumptions{font-size:12px; color:var(--muted); line-height:1.7;}
+  .assumptions li{margin-bottom:4px;}
+
+  /* live market data panel (shared component) */
+  .mkt-panel{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:22px;}
+  .mkt-row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:18px;}
+  .mkt-field{display:flex; flex-direction:column; gap:6px;}
+  .mkt-field label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;}
+  .mkt-field input{background:var(--panel-2); border:1px solid var(--border); color:var(--text); padding:9px 11px; border-radius:6px; font-family:var(--mono); font-size:13px; outline:none; width:160px;}
+  .mkt-field input:focus{border-color:var(--teal);}
+  .mkt-btn{background:var(--teal); color:#062019; border:none; border-radius:6px; padding:10px 16px; font-family:var(--disp); font-weight:600; font-size:13px; cursor:pointer; transition:opacity .15s;}
+  .mkt-btn:hover{opacity:0.85;}
+  .mkt-btn.secondary{background:var(--panel-2); color:var(--text); border:1px solid var(--border);}
+  .mkt-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .mkt-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;}
+  @media (max-width:800px){ .mkt-stats{grid-template-columns:repeat(2,1fr);} }
+  .mkt-stat{background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:14px;}
+  .mkt-stat .k{font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:6px;}
+  .mkt-stat .v{font-family:var(--mono); font-size:18px; font-weight:600;}
+  .mkt-stat .v.up{color:var(--teal);} .mkt-stat .v.down{color:var(--red);}
+  .mkt-ranges{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .mkt-range-btn{background:var(--panel-2); border:1px solid var(--border); color:var(--muted); padding:6px 14px; border-radius:20px; font-family:var(--mono); font-size:12px; cursor:pointer;}
+  .mkt-range-btn.active{background:var(--teal); color:#062019; border-color:var(--teal); font-weight:600;}
+  .mkt-msg{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-bottom:14px;}
+  .mkt-msg.err{color:var(--red);}
+  #mktChartCanvas{width:100%; height:260px;}
+  .mkt-settings{font-family:var(--mono); font-size:11px; color:var(--muted-2); margin-top:10px;}
+  .mkt-settings a{color:var(--teal); cursor:pointer; text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="mark"></span>
+    <h1>All-in-One Option Strategies Calculator</h1>
+    <span class="sub" id="tStrategyLabel">SHORT STRANGLE</span>
+  </div>
+  <div class="ticker">
+    <span>SYM <b id="tSym">AAPL</b></span>
+    <span>BREAKEVEN <b id="tBE">-</b></span>
+    <span>MAX RISK <b id="tMaxLoss">-</b></span>
+    <span>DTE <b id="tDte">-</b></span>
+  </div>
+</div>
+
+<div class="mkt-wrap" style="padding-top:24px;">
+  <div class="mkt-panel">
+    <h2 style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted); margin:0 0 18px; font-weight:600;">Live Market Data — Yahoo Finance</h2>
+
+    <div id="mktSetupRow" class="mkt-row" style="display:none;">
+      <div class="mkt-field" style="width:100%;">
+        <label>Cloudflare Worker URL (one-time setup)</label>
+        <input id="mktWorkerUrl" type="text" placeholder="https://your-worker.yourname.workers.dev" style="width:100%;">
+      </div>
+      <button class="mkt-btn" onclick="mktSaveWorkerUrl()">Save</button>
+    </div>
+
+    <div class="mkt-row">
+      <div class="mkt-field">
+        <label>Ticker Symbol</label>
+        <input id="mktSymbol" type="text" value="AAPL" maxlength="10">
+      </div>
+      <button class="mkt-btn" onclick="mktFetch()">Fetch Live Data</button>
+      <button class="mkt-btn secondary" id="mktUseBtn" onclick="mktUsePrice()" disabled>Use this price + symbol for calculator</button>
+    </div>
+
+    <div id="mktMsg" class="mkt-msg">Enter a ticker and click Fetch Live Data.</div>
+
+    <div class="mkt-stats">
+      <div class="mkt-stat"><div class="k">Current Price</div><div class="v" id="mktPrice">-</div></div>
+      <div class="mkt-stat"><div class="k">Previous Close</div><div class="v" id="mktPrevClose">-</div></div>
+      <div class="mkt-stat"><div class="k">Change</div><div class="v" id="mktChange">-</div></div>
+      <div class="mkt-stat"><div class="k">Exchange</div><div class="v" id="mktExchange" style="font-size:13px;">-</div></div>
+    </div>
+
+    <div class="mkt-ranges">
+      <button class="mkt-range-btn" data-range="1d" onclick="mktSetRange('1d')">1D</button>
+      <button class="mkt-range-btn" data-range="5d" onclick="mktSetRange('5d')">5D</button>
+      <button class="mkt-range-btn" data-range="1mo" onclick="mktSetRange('1mo')">1M</button>
+      <button class="mkt-range-btn" data-range="6mo" onclick="mktSetRange('6mo')">6M</button>
+      <button class="mkt-range-btn" data-range="ytd" onclick="mktSetRange('ytd')">YTD</button>
+      <button class="mkt-range-btn active" data-range="1y" onclick="mktSetRange('1y')">1Y</button>
+      <button class="mkt-range-btn" data-range="5y" onclick="mktSetRange('5y')">5Y</button>
+      <button class="mkt-range-btn" data-range="10y" onclick="mktSetRange('10y')">10Y</button>
+      <button class="mkt-range-btn" data-range="20y" onclick="mktSetRange('20y')">20Y</button>
+    </div>
+
+    <canvas id="mktChartCanvas"></canvas>
+
+    <div class="mkt-settings">
+      Data via an unofficial Yahoo Finance endpoint — for education/paper-trading only, not guaranteed accurate or continuously available.
+      <a onclick="mktToggleSetup()">Change Worker URL</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- LEFT: INPUTS -->
+    <div>
+      <div class="panel">
+        <h2>Strategy &amp; Trade Inputs</h2>
+
+        <div class="field strategy-select">
+          <label>Strategy</label>
+          <select id="strategy" onchange="onStrategyChange()">
+            <option value="long_call">Long Call</option>
+            <option value="short_put">Short Put</option>
+            <option value="covered_call">Covered Call</option>
+            <option value="long_put">Long Put</option>
+            <option value="covered_put">Covered Put</option>
+            <option value="short_straddle">Short Straddle</option>
+            <option value="short_strangle" selected>Short Strangle</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Underlying Symbol</label>
+          <input id="symbol" type="text" value="AAPL" maxlength="10">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Stock Price at Entry ($)</label>
+            <input id="stockEntry" type="number" step="0.01" value="194.00">
+          </div>
+          <div class="field">
+            <label>Stock Price at Expiration ($)</label>
+            <input id="stockExp" type="number" step="0.01" value="200.00">
+          </div>
+        </div>
+
+        <div id="callLegGroup" class="leg-group">
+          <div class="leg-title">Call Leg</div>
+          <div class="field-row">
+            <div class="field"><label>Call Strike ($)</label><input id="callStrike" type="number" step="0.01" value="189.00"></div>
+            <div class="field"><label>Call Premium ($/sh)</label><input id="callPrem" type="number" step="0.01" value="5.00"></div>
+          </div>
+        </div>
+
+        <div id="putLegGroup" class="leg-group">
+          <div class="leg-title">Put Leg</div>
+          <div class="field-row">
+            <div class="field"><label>Put Strike ($)</label><input id="putStrike" type="number" step="0.01" value="185.00"></div>
+            <div class="field"><label>Put Premium ($/sh)</label><input id="putPrem" type="number" step="0.01" value="3.00"></div>
+          </div>
+        </div>
+
+        <div id="stockLegGroup" class="leg-group">
+          <div class="leg-title">Stock Leg</div>
+          <div class="field">
+            <label>Stock Shares Owned / Short</label>
+            <input id="sharesOwned" type="number" step="1" value="100">
+          </div>
+        </div>
+
+        <div class="leg-group">
+          <div class="leg-title">Contract &amp; Cost Settings</div>
+          <div class="field-row">
+            <div class="field"><label># Option Contracts</label><input id="contracts" type="number" step="1" min="1" value="1"></div>
+            <div class="field"><label>Shares / Contract</label><input id="multiplier" type="number" step="1" min="1" value="100"></div>
+          </div>
+          <div class="field">
+            <label>Expiration Date</label>
+            <input id="expDate" type="date" value="2026-09-18">
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Fees &amp; Commissions ($)</label><input id="fees" type="number" step="0.01" value="0"></div>
+            <div class="field"><label>Margin / Collateral ($)</label><input id="margin" type="number" step="0.01" value="0"></div>
+          </div>
+          <div class="field">
+            <label>Implied Volatility Outlook</label>
+            <select id="ivOutlook">
+              <option>Expected to Rise</option>
+              <option selected>Uncertain</option>
+              <option>Expected to Fall</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Scenario Low (% of Entry)</label><input id="scLow" type="number" step="1" value="50"></div>
+            <div class="field"><label>Scenario High (% of Entry)</label><input id="scHigh" type="number" step="1" value="150"></div>
+          </div>
+          <div class="field">
+            <label>Scenario Intervals</label>
+            <input id="scInt" type="number" step="1" min="2" max="40" value="20">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div>
+      <div class="panel">
+        <h2>Automatic Strategy Results</h2>
+
+        <div id="setupWarn" class="setup-warn"></div>
+
+        <div id="resultBanner" class="result-banner profit">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">EXPIRATION RESULT</div>
+            <div style="font-size:20px;font-weight:700;" id="netPlBig">-</div>
+          </div>
+          <span class="tag" id="resultTag">-</span>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="k">Initial Net Cash Flow</div><div class="v" id="oCashFlow">-</div></div>
+          <div class="stat"><div class="k">Lower / Single Breakeven</div><div class="v" id="oLowBE">-</div></div>
+          <div class="stat"><div class="k">Upper Breakeven</div><div class="v" id="oUpBE">-</div></div>
+          <div class="stat"><div class="k">Return on Capital</div><div class="v" id="oReturn">-</div></div>
+        </div>
+
+        <div class="kv-list">
+          <div><span class="k">Strategy Description</span><span class="v" id="oDescription" style="text-align:right; max-width:260px;">-</span></div>
+          <div><span class="k">Position Construction</span><span class="v" id="oConstruction">-</span></div>
+          <div><span class="k">Market Outlook</span><span class="v" id="oOutlook">-</span></div>
+          <div><span class="k">Profit Zone</span><span class="v" id="oProfitZone">-</span></div>
+          <div><span class="k">Call Intrinsic Value</span><span class="v" id="oCallInt">-</span></div>
+          <div><span class="k">Put Intrinsic Value</span><span class="v" id="oPutInt">-</span></div>
+          <div><span class="k">Stock-Leg P/L</span><span class="v" id="oStockPL">-</span></div>
+          <div><span class="k">Option-Leg P/L</span><span class="v" id="oOptionPL">-</span></div>
+          <div><span class="k">Gross P/L</span><span class="v" id="oGross">-</span></div>
+          <div><span class="k">Net P/L</span><span class="v" id="oNet">-</span></div>
+          <div><span class="k">Time Decay Effect</span><span class="v" id="oDecay">-</span></div>
+          <div><span class="k">Volatility Effect</span><span class="v" id="oVol">-</span></div>
+          <div style="grid-column:1/-1;"><span class="k">Maximum Profit</span><span class="v" id="oMaxProfit" style="text-align:right;">-</span></div>
+          <div style="grid-column:1/-1;"><span class="k">Maximum Loss</span><span class="v" id="oMaxLoss" style="text-align:right;">-</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Payoff Diagram</h2>
+        <canvas id="chartCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:24px;">
+    <h2>Expiration Payoff Table</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Stock at Expiration</th>
+            <th>Call Intrinsic</th>
+            <th>Put Intrinsic</th>
+            <th>Stock-Leg P/L</th>
+            <th>Option-Leg P/L</th>
+            <th>Gross P/L</th>
+            <th>Net P/L</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody id="payoffBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:24px;">
+    <h2>Seven-Strategy Reference</h2>
+    <table class="ref-table" id="refTable">
+      <thead>
+        <tr><th>Strategy</th><th>Construction</th><th>Market Outlook</th><th>Time Decay</th><th>Volatility</th><th>Maximum Profit</th><th>Primary Risk</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="panel" style="margin-top:24px;">
+    <h2>Assumptions &amp; Notes</h2>
+    <ul class="assumptions">
+      <li>All figures are illustrative — replace inputs with your own trade data.</li>
+      <li>Values at expiration use intrinsic value only (no Black-Scholes / time-value pricing before expiration).</li>
+      <li>Covered strategies compare "Stock Shares Owned / Short" against shares controlled by the options and warn if the position isn't fully covered.</li>
+      <li>Return on Capital uses Margin/Collateral if entered; otherwise it uses the debit paid or stock investment as the base.</li>
+      <li>Fees are applied once to the overall position, not per contract.</li>
+      <li>Everything recalculates live as you edit inputs or switch strategy — nothing is hardcoded.</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  <span>All-in-One Option Strategies Calculator — client-side, no data leaves your browser (except live price lookups via your own Worker).</span>
+  <span>Not financial advice.</span>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const fmtCur = (n, dp=2) => {
+  if (n === null || n === undefined || isNaN(n)) return '-';
+  if (Math.abs(n) < 0.005) return '-';
+  const s = Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:dp, maximumFractionDigits:dp});
+  return (n < 0 ? '($' : '$') + s + (n < 0 ? ')' : '');
+};
+const fmtPct = (n) => {
+  if (n === null || n === undefined || isNaN(n)) return '-';
+  if (Math.abs(n) < 0.0005) return '-';
+  const s = (Math.abs(n)*100).toFixed(1) + '%';
+  return n < 0 ? '(' + s + ')' : s;
+};
+
+const STRATEGY_META = {
+  long_call: {
+    label:'Long Call', construction:'Buy call', outlook:'Bullish',
+    decay:'Hurts — long option loses time value', vol:'Rising IV generally helps',
+    description:'Buy a call, profiting if the stock rises above strike + premium.',
+    needs:{call:true, put:false, stock:false},
+    maxProfitRef:'Unlimited', riskRef:'Premium paid',
+  },
+  short_put: {
+    label:'Short Put', construction:'Sell put', outlook:'Bullish / neutral',
+    decay:'Helps — sold premium decays', vol:'Falling IV generally helps',
+    description:'Sell a put, obligated to buy shares at strike if assigned.',
+    needs:{call:false, put:true, stock:false},
+    maxProfitRef:'Premium received', riskRef:'Stock can fall to $0',
+  },
+  covered_call: {
+    label:'Covered Call', construction:'Long stock + sell call', outlook:'Mildly bullish / neutral',
+    decay:'Helps — sold premium decays', vol:'Falling IV generally helps',
+    description:'Own shares and sell a call against them, capping upside for income.',
+    needs:{call:true, put:false, stock:true},
+    maxProfitRef:'Limited', riskRef:'Stock downside',
+  },
+  long_put: {
+    label:'Long Put', construction:'Buy put', outlook:'Bearish',
+    decay:'Hurts — long option loses time value', vol:'Rising IV generally helps',
+    description:'Buy a put, profiting if the stock falls below strike − premium.',
+    needs:{call:false, put:true, stock:false},
+    maxProfitRef:'Substantial; stock to $0', riskRef:'Premium paid',
+  },
+  covered_put: {
+    label:'Covered Put', construction:'Short stock + sell put', outlook:'Mildly bearish / neutral',
+    decay:'Helps — sold premium decays', vol:'Falling IV generally helps',
+    description:'Short shares and sell a put against the position, capping downside profit.',
+    needs:{call:false, put:true, stock:true},
+    maxProfitRef:'Limited', riskRef:'Unlimited stock upside',
+  },
+  short_straddle: {
+    label:'Short Straddle', construction:'Sell same-strike call + put', outlook:'Neutral',
+    decay:'Helps — sold premium decays', vol:'Falling IV generally helps',
+    description:'Sell a call and put at the same strike, profiting if the stock stays near the strike.',
+    needs:{call:true, put:true, stock:false},
+    maxProfitRef:'Combined premium', riskRef:'Large move either direction',
+  },
+  short_strangle: {
+    label:'Short Strangle', construction:'Sell lower put + higher call', outlook:'Neutral',
+    decay:'Helps — sold premium decays', vol:'Falling IV generally helps',
+    description:'Sell a put below and a call above the current price, profiting if the stock stays between strikes.',
+    needs:{call:true, put:true, stock:false},
+    maxProfitRef:'Combined premium', riskRef:'Large move beyond breakevens',
+  },
+};
+
+function readInputs(){
+  return {
+    key: $('strategy').value,
+    symbol: $('symbol').value.trim().toUpperCase() || 'XYZ',
+    stockEntry: parseFloat($('stockEntry').value) || 0,
+    stockExp: parseFloat($('stockExp').value) || 0,
+    callStrike: parseFloat($('callStrike').value) || 0,
+    callPrem: parseFloat($('callPrem').value) || 0,
+    putStrike: parseFloat($('putStrike').value) || 0,
+    putPrem: parseFloat($('putPrem').value) || 0,
+    sharesOwned: parseFloat($('sharesOwned').value) || 0,
+    contracts: parseInt($('contracts').value) || 1,
+    mult: parseInt($('multiplier').value) || 100,
+    expDate: $('expDate').value,
+    fees: parseFloat($('fees').value) || 0,
+    margin: parseFloat($('margin').value) || 0,
+    scLow: (parseFloat($('scLow').value) || 0) / 100,
+    scHigh: (parseFloat($('scHigh').value) || 0) / 100,
+    scInt: Math.max(2, Math.min(40, parseInt($('scInt').value) || 20)),
+  };
+}
+
+function daysToExpiration(expDateStr){
+  const exp = new Date(expDateStr + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((exp - today) / 86400000);
+}
+
+// Core strategy math, evaluated at a given expiration price (sExp)
+function computeAt(I, sExp){
+  const CM = I.mult * I.contracts;
+  let r = { callInt:0, putInt:0, stockPL:0, optionPL:0, cashFlow:0, lowerBE:null, upperBE:null,
+            maxProfitText:'-', maxLossText:'-', profitZone:'-', setup:null };
+
+  switch(I.key){
+    case 'long_call': {
+      const callInt = Math.max(sExp - I.callStrike, 0);
+      const optionPL = (callInt - I.callPrem) * CM;
+      r.callInt = callInt; r.optionPL = optionPL;
+      r.cashFlow = -I.callPrem*CM;
+      r.lowerBE = I.callStrike + I.callPrem;
+      r.maxProfitText = 'Unlimited above breakeven';
+      r.maxLossText = fmtCur(I.callPrem*CM) + ' (premium paid)';
+      r.profitZone = `Above ${fmtCur(I.callStrike+I.callPrem)}`;
+      break;
+    }
+    case 'short_put': {
+      const putInt = Math.max(I.putStrike - sExp, 0);
+      const optionPL = (I.putPrem - putInt) * CM;
+      r.putInt = putInt; r.optionPL = optionPL;
+      r.cashFlow = I.putPrem*CM;
+      r.lowerBE = I.putStrike - I.putPrem;
+      r.maxProfitText = fmtCur(I.putPrem*CM) + ' (premium received)';
+      r.maxLossText = fmtCur(Math.max(I.putStrike*CM - I.putPrem*CM,0)) + ' (stock falls to $0)';
+      r.profitZone = `Above ${fmtCur(I.putStrike-I.putPrem)}`;
+      break;
+    }
+    case 'covered_call': {
+      const shares = I.sharesOwned;
+      const callInt = Math.max(sExp - I.callStrike, 0);
+      const stockPL = (sExp - I.stockEntry) * shares;
+      const optionPL = (I.callPrem - callInt) * CM;
+      r.callInt = callInt; r.stockPL = stockPL; r.optionPL = optionPL;
+      r.cashFlow = I.callPrem*CM;
+      r.lowerBE = I.stockEntry - I.callPrem;
+      const capGain = (I.callStrike - I.stockEntry) * shares + I.callPrem*CM;
+      r.maxProfitText = fmtCur(capGain) + ' (capped at strike)';
+      r.maxLossText = fmtCur(Math.max(I.stockEntry*shares - I.callPrem*CM,0)) + ' (stock falls to $0)';
+      r.profitZone = `Above ${fmtCur(I.stockEntry-I.callPrem)}`;
+      if (shares < CM) r.setup = 'Warning: shares owned are fewer than shares controlled by the calls — position is not fully covered.';
+      break;
+    }
+    case 'long_put': {
+      const putInt = Math.max(I.putStrike - sExp, 0);
+      const optionPL = (putInt - I.putPrem) * CM;
+      r.putInt = putInt; r.optionPL = optionPL;
+      r.cashFlow = -I.putPrem*CM;
+      r.upperBE = I.putStrike - I.putPrem;
+      r.maxProfitText = fmtCur(Math.max(I.putStrike*CM - I.putPrem*CM,0)) + ' (stock falls to $0)';
+      r.maxLossText = fmtCur(I.putPrem*CM) + ' (premium paid)';
+      r.profitZone = `Below ${fmtCur(I.putStrike-I.putPrem)}`;
+      break;
+    }
+    case 'covered_put': {
+      const shares = I.sharesOwned;
+      const putInt = Math.max(I.putStrike - sExp, 0);
+      const stockPL = (I.stockEntry - sExp) * shares;
+      const optionPL = (I.putPrem - putInt) * CM;
+      r.putInt = putInt; r.stockPL = stockPL; r.optionPL = optionPL;
+      r.cashFlow = I.putPrem*CM;
+      r.upperBE = I.stockEntry + I.putPrem;
+      const capGain = (I.stockEntry - I.putStrike) * shares + I.putPrem*CM;
+      r.maxProfitText = fmtCur(capGain) + ' (capped at strike)';
+      r.maxLossText = 'Unlimited (stock can rise indefinitely)';
+      r.profitZone = `Below ${fmtCur(I.stockEntry+I.putPrem)}`;
+      if (shares < CM) r.setup = 'Warning: shorted shares are fewer than shares controlled by the puts — position is not fully covered.';
+      break;
+    }
+    case 'short_straddle': {
+      const strike = I.callStrike;
+      const callInt = Math.max(sExp - strike, 0);
+      const putInt = Math.max(strike - sExp, 0);
+      const comb = I.callPrem + I.putPrem;
+      const optionPL = (comb - callInt - putInt) * CM;
+      r.callInt = callInt; r.putInt = putInt; r.optionPL = optionPL;
+      r.cashFlow = comb*CM;
+      r.lowerBE = strike - comb; r.upperBE = strike + comb;
+      r.maxProfitText = fmtCur(comb*CM) + ' (combined premium)';
+      r.maxLossText = 'Unlimited above upper breakeven; ' + fmtCur(Math.max(strike*CM - comb*CM,0)) + ' if stock falls to $0';
+      r.profitZone = `Between ${fmtCur(strike-comb)} and ${fmtCur(strike+comb)}`;
+      if (Math.abs(I.callStrike - I.putStrike) > 0.001) r.setup = 'Error: short straddle requires the same strike for the call and put.';
+      break;
+    }
+    case 'short_strangle': {
+      const callInt = Math.max(sExp - I.callStrike, 0);
+      const putInt = Math.max(I.putStrike - sExp, 0);
+      const comb = I.callPrem + I.putPrem;
+      const optionPL = (comb - callInt - putInt) * CM;
+      r.callInt = callInt; r.putInt = putInt; r.optionPL = optionPL;
+      r.cashFlow = comb*CM;
+      r.lowerBE = I.putStrike - comb; r.upperBE = I.callStrike + comb;
+      r.maxProfitText = fmtCur(comb*CM) + ' (combined premium)';
+      r.maxLossText = 'Unlimited above upper breakeven; ' + fmtCur(Math.max(I.putStrike*CM - comb*CM,0)) + ' if stock falls to $0';
+      r.profitZone = `Between ${fmtCur(I.putStrike-comb)} and ${fmtCur(I.callStrike+comb)}`;
+      if (I.putStrike >= I.callStrike) r.setup = 'Error: short strangle requires the put strike to be below the call strike.';
+      break;
+    }
+  }
+  r.grossPL = r.stockPL + r.optionPL;
+  return r;
+}
+
+function computeReturn(I, r){
+  const CM = I.mult * I.contracts;
+  let base;
+  if (I.margin > 0) base = I.margin;
+  else if (r.cashFlow < 0) base = Math.abs(r.cashFlow);
+  else if (STRATEGY_META[I.key].needs.stock) base = I.stockEntry * (I.sharesOwned || CM);
+  else base = Math.abs(r.cashFlow) || 1;
+  return (r.grossPL - I.fees) / base;
+}
+
+function updateFieldVisibility(key){
+  const meta = STRATEGY_META[key];
+  $('callLegGroup').style.display = meta.needs.call ? 'block' : 'none';
+  $('putLegGroup').style.display = meta.needs.put ? 'block' : 'none';
+  $('stockLegGroup').style.display = meta.needs.stock ? 'block' : 'none';
+}
+
+function onStrategyChange(){
+  updateFieldVisibility($('strategy').value);
+  render();
+}
+
+function buildPayoffRows(I){
+  const rows = [];
+  const lo = I.stockEntry * I.scLow;
+  const hi = I.stockEntry * I.scHigh;
+  for (let i=0;i<=I.scInt;i++){
+    const price = lo + i*(hi-lo)/I.scInt;
+    const r = computeAt(I, price);
+    const netPL = r.grossPL - I.fees;
+    rows.push({price, callInt:r.callInt, putInt:r.putInt, stockPL:r.stockPL, optionPL:r.optionPL, grossPL:r.grossPL, netPL});
+  }
+  return rows;
+}
+
+function render(){
+  const I = readInputs();
+  const meta = STRATEGY_META[I.key];
+  const r = computeAt(I, I.stockExp);
+  const netPL = r.grossPL - I.fees;
+  const ret = computeReturn(I, r);
+  const dte = daysToExpiration(I.expDate);
+  const result = netPL > 0.005 ? 'PROFIT' : (netPL < -0.005 ? 'LOSS' : 'BREAKEVEN');
+
+  $('tStrategyLabel').textContent = meta.label.toUpperCase();
+  $('tSym').textContent = I.symbol;
+  const beText = r.lowerBE != null && r.upperBE != null ? `${fmtCur(r.lowerBE)} — ${fmtCur(r.upperBE)}`
+                 : r.lowerBE != null ? fmtCur(r.lowerBE)
+                 : r.upperBE != null ? fmtCur(r.upperBE) : '-';
+  $('tBE').textContent = beText;
+  $('tMaxLoss').textContent = r.maxLossText.split(' (')[0];
+  $('tDte').textContent = isNaN(dte) ? '-' : dte;
+
+  const warn = $('setupWarn');
+  if (r.setup){ warn.textContent = r.setup; warn.classList.add('show'); }
+  else { warn.classList.remove('show'); warn.textContent=''; }
+
+  const banner = $('resultBanner');
+  banner.className = 'result-banner ' + result.toLowerCase();
+  $('resultTag').textContent = result;
+  $('netPlBig').textContent = (netPL >= 0 ? '+' : '') + fmtCur(netPL, 0).replace('($','-$').replace(')','');
+
+  $('oCashFlow').textContent = fmtCur(r.cashFlow, 0);
+  $('oLowBE').textContent = r.lowerBE != null ? fmtCur(r.lowerBE) : '-';
+  $('oUpBE').textContent = r.upperBE != null ? fmtCur(r.upperBE) : '-';
+  $('oReturn').textContent = fmtPct(ret);
+
+  $('oDescription').textContent = meta.description;
+  $('oConstruction').textContent = meta.construction;
+  $('oOutlook').textContent = meta.outlook;
+  $('oProfitZone').textContent = r.profitZone;
+  $('oCallInt').textContent = fmtCur(r.callInt);
+  $('oPutInt').textContent = fmtCur(r.putInt);
+  $('oStockPL').textContent = fmtCur(r.stockPL, 0);
+  $('oOptionPL').textContent = fmtCur(r.optionPL, 0);
+  $('oGross').textContent = fmtCur(r.grossPL, 0);
+  $('oNet').textContent = fmtCur(netPL, 0);
+  $('oDecay').textContent = meta.decay;
+  $('oVol').textContent = meta.vol;
+  $('oMaxProfit').textContent = r.maxProfitText;
+  $('oMaxLoss').textContent = r.maxLossText;
+
+  const rows = buildPayoffRows(I);
+  const tbody = $('payoffBody');
+  tbody.innerHTML = rows.map(row => {
+    const res = row.netPL > 0.005 ? 'PROFIT' : (row.netPL < -0.005 ? 'LOSS' : 'BREAKEVEN');
+    const cls = row.netPL > 0.005 ? 'pos-cell' : (row.netPL < -0.005 ? 'neg-cell' : '');
+    return `<tr>
+      <td>${fmtCur(row.price)}</td>
+      <td>${fmtCur(row.callInt)}</td>
+      <td>${fmtCur(row.putInt)}</td>
+      <td>${fmtCur(row.stockPL,0)}</td>
+      <td>${fmtCur(row.optionPL,0)}</td>
+      <td>${fmtCur(row.grossPL,0)}</td>
+      <td class="${cls}">${fmtCur(row.netPL,0)}</td>
+      <td class="${cls}">${res}</td>
+    </tr>`;
+  }).join('');
+
+  drawChart(rows, r);
+  renderRefTable(I.key);
+}
+
+function renderRefTable(activeKey){
+  const tbody = document.querySelector('#refTable tbody');
+  tbody.innerHTML = Object.entries(STRATEGY_META).map(([key,m]) => `
+    <tr class="${key===activeKey ? 'current':''}">
+      <td>${m.label}</td><td>${m.construction}</td><td>${m.outlook}</td>
+      <td>${m.decay.split(' — ')[0]}</td><td>${m.vol}</td>
+      <td>${m.maxProfitRef}</td><td>${m.riskRef}</td>
+    </tr>`).join('');
+}
+
+function drawChart(rows, current){
+  const canvas = $('chartCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 600, cssH = 280;
+  canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  const pad = {l:60,r:20,t:16,b:30};
+  const w = cssW-pad.l-pad.r, h = cssH-pad.t-pad.b;
+  const xs = rows.map(r=>r.price), ys = rows.map(r=>r.netPL);
+  const xMin=Math.min(...xs), xMax=Math.max(...xs);
+  const yMin=Math.min(0,...ys), yMax=Math.max(0,...ys);
+  const xScale = v => pad.l + ((v-xMin)/((xMax-xMin)||1))*w;
+  const yScale = v => pad.t + h - ((v-yMin)/((yMax-yMin)||1))*h;
+
+  ctx.strokeStyle='#232a33'; ctx.lineWidth=1; ctx.font='10px JetBrains Mono, monospace'; ctx.fillStyle='#7c8894';
+  for (let i=0;i<=4;i++){
+    const yv = yMin+(yMax-yMin)*i/4, yy=yScale(yv);
+    ctx.beginPath(); ctx.moveTo(pad.l,yy); ctx.lineTo(pad.l+w,yy); ctx.stroke();
+    ctx.fillText('$'+Math.round(yv).toLocaleString(), 4, yy+3);
+  }
+  const zeroY = yScale(0);
+  ctx.strokeStyle='#4d5761'; ctx.beginPath(); ctx.moveTo(pad.l,zeroY); ctx.lineTo(pad.l+w,zeroY); ctx.stroke();
+
+  ctx.strokeStyle='rgba(242,184,75,0.6)'; ctx.setLineDash([4,3]);
+  [current.lowerBE, current.upperBE].forEach(be=>{
+    if (be!=null && be>=xMin && be<=xMax){ const bx=xScale(be); ctx.beginPath(); ctx.moveTo(bx,pad.t); ctx.lineTo(bx,pad.t+h); ctx.stroke(); }
+  });
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  rows.forEach((row,i)=>{ const x=xScale(row.price), y=yScale(row.netPL); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineWidth=2.5; ctx.strokeStyle='#2dd4a7'; ctx.stroke();
+
+  ctx.fillStyle='#7c8894'; ctx.textAlign='center';
+  [xMin,(xMin+xMax)/2,xMax].forEach(v=>ctx.fillText('$'+v.toFixed(0), xScale(v), pad.t+h+18));
+  ctx.textAlign='left';
+}
+
+/* ---------------- Live Market Data (shared component) ---------------- */
+let mktCurrentRange = '1y';
+let mktLastPrice = null;
+let mktLastSymbol = null;
+let mktLastHistory = [];
+
+function mktGetWorkerUrl(){ return localStorage.getItem('straddleWorkerUrl') || ''; }
+function mktSaveWorkerUrl(){
+  const v = $('mktWorkerUrl').value.trim();
+  if (v) { localStorage.setItem('straddleWorkerUrl', v); $('mktSetupRow').style.display = 'none'; }
+}
+function mktToggleSetup(){
+  const row = $('mktSetupRow');
+  $('mktWorkerUrl').value = mktGetWorkerUrl();
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+function mktSetRange(r){
+  mktCurrentRange = r;
+  document.querySelectorAll('.mkt-range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === r));
+  mktFetch();
+}
+async function mktFetch(){
+  const workerUrl = mktGetWorkerUrl();
+  const msg = $('mktMsg');
+  if (!workerUrl){ $('mktSetupRow').style.display='flex'; msg.textContent='Set your Cloudflare Worker URL above first, then click Fetch again.'; msg.className='mkt-msg err'; return; }
+  const symbol = ($('mktSymbol').value || '').trim().toUpperCase();
+  if (!symbol){ msg.textContent='Enter a ticker symbol.'; msg.className='mkt-msg err'; return; }
+
+  document.querySelectorAll('.mkt-range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === mktCurrentRange));
+  msg.textContent = `Fetching ${symbol}...`; msg.className='mkt-msg';
+  $('mktUseBtn').disabled = true;
+
+  try {
+    const resp = await fetch(`${workerUrl}?symbol=${encodeURIComponent(symbol)}&range=${mktCurrentRange}`);
+    const data = await resp.json();
+    if (data.error){ msg.textContent='Error: '+data.error; msg.className='mkt-msg err'; return; }
+
+    mktLastPrice = data.currentPrice; mktLastSymbol = data.symbol; mktLastHistory = data.history || [];
+
+    $('mktPrice').textContent = data.currentPrice != null ? '$'+data.currentPrice.toFixed(2) : '-';
+    $('mktPrevClose').textContent = data.previousClose != null ? '$'+data.previousClose.toFixed(2) : '-';
+    const chg = (data.currentPrice!=null && data.previousClose) ? data.currentPrice-data.previousClose : null;
+    const chgPct = (chg!=null && data.previousClose) ? (chg/data.previousClose)*100 : null;
+    const chgEl = $('mktChange');
+    if (chg!=null){ chgEl.textContent = `${chg>=0?'+':''}${chg.toFixed(2)} (${chgPct.toFixed(2)}%)`; chgEl.className='v '+(chg>=0?'up':'down'); }
+    else { chgEl.textContent='-'; chgEl.className='v'; }
+    $('mktExchange').textContent = data.exchangeName || '-';
+
+    if (!mktLastHistory.length){ msg.textContent = `Loaded ${data.symbol}, but no chart data for this range.`; msg.className='mkt-msg err'; }
+    else { msg.textContent = `Loaded ${data.symbol} — ${mktLastHistory.length} data points (${mktCurrentRange}).`; msg.className='mkt-msg'; }
+    $('mktUseBtn').disabled = (mktLastPrice == null);
+
+    mktDrawChart(mktLastHistory, mktCurrentRange);
+  } catch(e){ msg.textContent='Fetch failed: '+e.message; msg.className='mkt-msg err'; }
+}
+function mktUsePrice(){
+  if (mktLastPrice == null) return;
+  const entryField = $('stockEntry');
+  entryField.value = mktLastPrice.toFixed(2);
+  entryField.dispatchEvent(new Event('input', {bubbles:true}));
+  if (mktLastSymbol){
+    const symField = $('symbol');
+    symField.value = mktLastSymbol;
+    symField.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+}
+function mktFormatLabel(ts, range){
+  const d = new Date(ts);
+  if (range==='1d') return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  if (range==='5d') return d.toLocaleDateString([], {weekday:'short'});
+  if (range==='1mo'||range==='6mo'||range==='ytd') return d.toLocaleDateString([], {month:'short',day:'numeric'});
+  if (range==='1y') return d.toLocaleDateString([], {month:'short'});
+  return String(d.getFullYear());
+}
+function mktDrawChart(history, range){
+  const canvas = $('mktChartCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 600, cssH = 260;
+  canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+  if (!history.length) return;
+
+  const pad = {l:60,r:20,t:16,b:30};
+  const w = cssW-pad.l-pad.r, h = cssH-pad.t-pad.b;
+  const closes = history.map(p=>p.close);
+  const yMin=Math.min(...closes), yMax=Math.max(...closes);
+  const xScale = i => pad.l + (i/(history.length-1||1))*w;
+  const yScale = v => pad.t + h - ((v-yMin)/((yMax-yMin)||1))*h;
+
+  ctx.strokeStyle='#232a33'; ctx.lineWidth=1; ctx.font='10px JetBrains Mono, monospace'; ctx.fillStyle='#7c8894';
+  for (let i=0;i<=4;i++){
+    const yv=yMin+(yMax-yMin)*i/4, yy=yScale(yv);
+    ctx.beginPath(); ctx.moveTo(pad.l,yy); ctx.lineTo(pad.l+w,yy); ctx.stroke();
+    ctx.fillText('$'+yv.toFixed(0), 4, yy+3);
+  }
+  ctx.beginPath();
+  history.forEach((p,i)=>{ const x=xScale(i), y=yScale(p.close); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineWidth=2; ctx.strokeStyle='#2dd4a7'; ctx.stroke();
+
+  ctx.fillStyle='#7c8894'; ctx.textAlign='center';
+  [0, Math.floor(history.length/2), history.length-1].forEach(i => ctx.fillText(mktFormatLabel(history[i].date, range), xScale(i), pad.t+h+18));
+  ctx.textAlign='left';
+}
+
+if (!mktGetWorkerUrl()) $('mktSetupRow').style.display = 'flex';
+
+/* ---------------- init ---------------- */
+updateFieldVisibility($('strategy').value);
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', render));
+window.addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>
