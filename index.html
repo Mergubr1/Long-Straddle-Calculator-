@@ -337,7 +337,7 @@ async function mktFetch(){
     }
     document.getElementById('mktUseBtn').disabled = (mktLastPrice == null);
 
-    mktDrawChart(mktLastHistory, mktCurrentRange);
+    mktDrawChart(mktLastHistory, mktCurrentRange);renderKeyStats(data.stats);
   } catch (e){
     msg.textContent = 'Fetch failed: ' + e.message;
     msg.className = 'mkt-msg err';
