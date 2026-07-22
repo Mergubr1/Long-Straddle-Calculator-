@@ -204,7 +204,7 @@
   .mkt-stat .v{font-family:var(--mono); font-size:18px; font-weight:600;}
   .mkt-stat .v.up{color:var(--teal);}
   .mkt-stat .v.down{color:var(--red);}
-  .mkt-ranges{display:flex; gap:8px; margin-bottom:14px;}
+  .mkt-ranges{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
   .mkt-range-btn{
     background:var(--panel-2); border:1px solid var(--border); color:var(--muted);
     padding:6px 14px; border-radius:20px; font-family:var(--mono); font-size:12px; cursor:pointer;
@@ -235,7 +235,7 @@
         <input id="mktSymbol" type="text" value="AAPL" maxlength="10">
       </div>
       <button class="mkt-btn" onclick="mktFetch()">Fetch Live Data</button>
-      <button class="mkt-btn secondary" id="mktUseBtn" onclick="mktUsePrice()" disabled>Use this price for Stock Price at Entry</button>
+      <button class="mkt-btn secondary" id="mktUseBtn" onclick="mktUsePrice()" disabled>Use this price + symbol for calculator</button>
     </div>
 
     <div id="mktMsg" class="mkt-msg">Enter a ticker and click Fetch Live Data.</div>
@@ -248,16 +248,21 @@
     </div>
 
     <div class="mkt-ranges">
-      <button class="mkt-range-btn" data-range="1y" onclick="mktSetRange('1y')">1 Year</button>
-      <button class="mkt-range-btn" data-range="5y" onclick="mktSetRange('5y')">5 Year</button>
-      <button class="mkt-range-btn" data-range="10y" onclick="mktSetRange('10y')">10 Year</button>
-      <button class="mkt-range-btn" data-range="20y" onclick="mktSetRange('20y')">20 Year</button>
+      <button class="mkt-range-btn" data-range="1d" onclick="mktSetRange('1d')">1D</button>
+      <button class="mkt-range-btn" data-range="5d" onclick="mktSetRange('5d')">5D</button>
+      <button class="mkt-range-btn" data-range="1mo" onclick="mktSetRange('1mo')">1M</button>
+      <button class="mkt-range-btn" data-range="6mo" onclick="mktSetRange('6mo')">6M</button>
+      <button class="mkt-range-btn" data-range="ytd" onclick="mktSetRange('ytd')">YTD</button>
+      <button class="mkt-range-btn" data-range="1y" onclick="mktSetRange('1y')">1Y</button>
+      <button class="mkt-range-btn" data-range="5y" onclick="mktSetRange('5y')">5Y</button>
+      <button class="mkt-range-btn" data-range="10y" onclick="mktSetRange('10y')">10Y</button>
+      <button class="mkt-range-btn" data-range="20y" onclick="mktSetRange('20y')">20Y</button>
     </div>
 
     <canvas id="mktChartCanvas"></canvas>
 
     <div class="mkt-settings">
-      Data via an unofficial Yahoo Finance endpoint — for education/paper-trading only, not guaranteed accurate or continuously available.
+      Data via an unofficial Yahoo Finance endpoint — for education/paper-trading only, not guaranteed accurate or continuously available. Intraday (1D/5D) data may be unavailable outside recent trading days.
       <a onclick="mktToggleSetup()">Change Worker URL</a>
     </div>
   </div>
@@ -266,6 +271,7 @@
 <script>
 let mktCurrentRange = '1y';
 let mktLastPrice = null;
+let mktLastSymbol = null;
 let mktLastHistory = [];
 
 function mktGetWorkerUrl(){ return localStorage.getItem('straddleWorkerUrl') || ''; }
@@ -308,6 +314,7 @@ async function mktFetch(){
     if (data.error){ msg.textContent = 'Error: ' + data.error; msg.className = 'mkt-msg err'; return; }
 
     mktLastPrice = data.currentPrice;
+    mktLastSymbol = data.symbol;
     mktLastHistory = data.history || [];
 
     document.getElementById('mktPrice').textContent = data.currentPrice != null ? '$' + data.currentPrice.toFixed(2) : '-';
@@ -321,11 +328,16 @@ async function mktFetch(){
     } else { chgEl.textContent = '-'; chgEl.className = 'v'; }
     document.getElementById('mktExchange').textContent = data.exchangeName || '-';
 
-    msg.textContent = `Loaded ${data.symbol} — ${mktLastHistory.length} data points (${mktCurrentRange}).`;
-    msg.className = 'mkt-msg';
+    if (!mktLastHistory.length){
+      msg.textContent = `Loaded ${data.symbol}, but no chart data for this range (try a different range).`;
+      msg.className = 'mkt-msg err';
+    } else {
+      msg.textContent = `Loaded ${data.symbol} — ${mktLastHistory.length} data points (${mktCurrentRange}).`;
+      msg.className = 'mkt-msg';
+    }
     document.getElementById('mktUseBtn').disabled = (mktLastPrice == null);
 
-    mktDrawChart(mktLastHistory);
+    mktDrawChart(mktLastHistory, mktCurrentRange);
   } catch (e){
     msg.textContent = 'Fetch failed: ' + e.message;
     msg.className = 'mkt-msg err';
@@ -337,9 +349,24 @@ function mktUsePrice(){
   const entryField = document.getElementById('stockEntry');
   entryField.value = mktLastPrice.toFixed(2);
   entryField.dispatchEvent(new Event('input', { bubbles: true }));
+
+  if (mktLastSymbol){
+    const symField = document.getElementById('symbol');
+    symField.value = mktLastSymbol;
+    symField.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 }
 
-function mktDrawChart(history){
+function mktFormatLabel(ts, range){
+  const d = new Date(ts);
+  if (range === '1d') return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  if (range === '5d') return d.toLocaleDateString([], {weekday:'short'});
+  if (range === '1mo' || range === '6mo' || range === 'ytd') return d.toLocaleDateString([], {month:'short', day:'numeric'});
+  if (range === '1y') return d.toLocaleDateString([], {month:'short'});
+  return String(d.getFullYear());
+}
+
+function mktDrawChart(history, range){
   const canvas = document.getElementById('mktChartCanvas');
   const dpr = window.devicePixelRatio || 1;
   const cssW = canvas.clientWidth || 600;
@@ -374,8 +401,7 @@ function mktDrawChart(history){
 
   ctx.fillStyle = '#7c8894'; ctx.textAlign = 'center';
   [0, Math.floor(history.length/2), history.length-1].forEach(i => {
-    const d = new Date(history[i].date);
-    ctx.fillText(d.getFullYear(), xScale(i), pad.t+h+18);
+    ctx.fillText(mktFormatLabel(history[i].date, range), xScale(i), pad.t+h+18);
   });
   ctx.textAlign = 'left';
 }
